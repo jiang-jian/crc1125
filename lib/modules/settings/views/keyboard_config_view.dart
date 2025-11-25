@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../../app/theme/app_theme.dart';
@@ -17,6 +18,9 @@ class KeyboardConfigView extends StatefulWidget {
 class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   // 获取键盘服务
   late final KeyboardService _keyboardService;
+
+  // FocusNode用于捕获键盘输入
+  final FocusNode _keyboardFocusNode = FocusNode();
 
   // 测试功能状态
   final RxString _inputBuffer = ''.obs; // 输入缓冲区
@@ -38,7 +42,40 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
     });
   }
 
-  /// 处理键盘输入（数字键盘优先支持）
+  @override
+  void dispose() {
+    _keyboardFocusNode.dispose();
+    super.dispose();
+  }
+
+  /// 处理RawKeyEvent（直接捕获物理键盘输入）
+  void _handleRawKeyEvent(RawKeyEvent event) {
+    if (event is! RawKeyDownEvent) return;
+
+    final logicalKey = event.logicalKey;
+    final keyLabel = event.character;
+
+    // 处理删除键
+    if (logicalKey == LogicalKeyboardKey.backspace) {
+      if (_inputBuffer.value.isNotEmpty) {
+        _inputBuffer.value = _inputBuffer.value.substring(0, _inputBuffer.value.length - 1);
+      }
+      return;
+    }
+
+    // 处理回车键
+    if (logicalKey == LogicalKeyboardKey.enter || logicalKey == LogicalKeyboardKey.numpadEnter) {
+      _inputBuffer.value += '\n';
+      return;
+    }
+
+    // 处理可打印字符（包括数字、字母、符号）
+    if (keyLabel != null && keyLabel.isNotEmpty) {
+      _inputBuffer.value += keyLabel;
+    }
+  }
+
+  /// 处理键盘输入（数字键盘优先支持）- 保留用于Native层事件
   void _handleKeyInput(Map<String, dynamic> keyData) {
     if (keyData.isEmpty) return;
 
@@ -137,12 +174,16 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      color: Colors.white,
-      child: Row(
-        children: [
+    return RawKeyboardListener(
+      focusNode: _keyboardFocusNode,
+      autofocus: true,
+      onKey: _handleRawKeyEvent,
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.white,
+        child: Row(
+          children: [
           // 左列：设备信息区 (40%)
           Expanded(
             flex: 40,
@@ -168,6 +209,7 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -259,6 +301,7 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -284,6 +327,7 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             style: TextStyle(fontSize: 14.sp, color: const Color(0xFFBDC3C7)),
           ),
         ],
+      ),
       ),
     );
   }
@@ -650,6 +694,7 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
       ),
     );
   }
