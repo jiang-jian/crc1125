@@ -22,6 +22,10 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   // FocusNode用于捕获键盘输入
   final FocusNode _keyboardFocusNode = FocusNode();
 
+  // 隐形TextField控制器和焦点（用于阻止虚拟键盘弹出）
+  final TextEditingController _dummyController = TextEditingController();
+  final FocusNode _dummyFocusNode = FocusNode();
+
   // 测试功能状态
   final RxString _inputBuffer = ''.obs; // 输入缓冲区
   final RxString _outputText = ''.obs; // 输出显示文本
@@ -39,12 +43,20 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
     // 自动扫描设备
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _keyboardService.scanUsbKeyboards();
+      
+      // 初始化焦点（阻止虚拟键盘弹出）
+      _keyboardFocusNode.requestFocus();
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _dummyFocusNode.requestFocus();
+      });
     });
   }
 
   @override
   void dispose() {
     _keyboardFocusNode.dispose();
+    _dummyController.dispose();
+    _dummyFocusNode.dispose();
     super.dispose();
   }
 
@@ -139,6 +151,7 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   void _performTestOutput() {
     // 立即请求焦点，防止软键盘弹出
     _keyboardFocusNode.requestFocus();
+    _dummyFocusNode.requestFocus();
     
     if (_inputBuffer.value.isEmpty) {
       Get.snackbar(
@@ -172,6 +185,7 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   void _clearAll() {
     // 立即请求焦点，防止软键盘弹出
     _keyboardFocusNode.requestFocus();
+    _dummyFocusNode.requestFocus();
     
     _inputBuffer.value = '';
     _outputText.value = '';
@@ -184,43 +198,75 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
       onTap: () {
         // 点击页面任何地方都重新获取焦点，防止软键盘弹出
         _keyboardFocusNode.requestFocus();
+        _dummyFocusNode.requestFocus();
       },
       child: RawKeyboardListener(
         focusNode: _keyboardFocusNode,
         autofocus: true,
         onKey: _handleRawKeyEvent,
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          color: Colors.white,
-          child: Row(
-            children: [
-          // 左列：设备信息区 (40%)
-          Expanded(
-            flex: 40,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 48.w, vertical: 40.h),
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundGrey,
-                border: Border(
-                  right: BorderSide(color: AppTheme.borderColor, width: 1.w),
+        child: Stack(
+          children: [
+            // 原有Container保持不变
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.white,
+              child: Row(
+                children: [
+              // 左列：设备信息区 (40%)
+              Expanded(
+                flex: 40,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 48.w, vertical: 40.h),
+                  decoration: BoxDecoration(
+                    color: AppTheme.backgroundGrey,
+                    border: Border(
+                      right: BorderSide(color: AppTheme.borderColor, width: 1.w),
+                    ),
+                  ),
+                  child: _buildDeviceInfoSection(),
                 ),
               ),
-              child: _buildDeviceInfoSection(),
-            ),
-          ),
 
-          // 右列：配置区域 (60%) - 待实现
-          Expanded(
-            flex: 60,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 48.w, vertical: 40.h),
-              color: Colors.white,
-              child: _buildConfigSection(),
+              // 右列：配置区域 (60%) - 待实现
+              Expanded(
+                flex: 60,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 48.w, vertical: 40.h),
+                  color: Colors.white,
+                  child: _buildConfigSection(),
+                ),
+              ),
+            ],
+              ),
             ),
-          ),
-        ],
-          ),
+            
+            // 隐形TextField（屏幕外，用于拦截系统输入意图，阻止虚拟键盘弹出）
+            Positioned(
+              left: -1000,
+              top: -1000,
+              child: SizedBox(
+                width: 1,
+                height: 1,
+                child: TextField(
+                  controller: _dummyController,
+                  focusNode: _dummyFocusNode,
+                  readOnly: true,
+                  enableInteractiveSelection: false,
+                  showCursor: false,
+                  keyboardType: TextInputType.none,
+                  style: const TextStyle(
+                    fontSize: 0.1,
+                    color: Colors.transparent,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -375,6 +421,7 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
       KeyboardDevice device, bool isConnected) async {
     // 立即请求焦点，防止软键盘弹出
     _keyboardFocusNode.requestFocus();
+    _dummyFocusNode.requestFocus();
     
     if (!isConnected) {
       // 请求权限
