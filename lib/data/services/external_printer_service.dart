@@ -234,7 +234,7 @@ class ExternalPrinterService extends GetxService {
   }) async {
     _addLog('========== 开始测试打印 ==========');
     _addLog('设备: ${device.displayName}');
-    isPrinting.value = true;
+    // ⚠️ 移除：isPrinting 由 View 层统一管理，避免双重管理导致状态混乱
     printerStatus.value = ExternalPrinterStatus.printing;
 
     try {
@@ -246,7 +246,7 @@ class ExternalPrinterService extends GetxService {
         _addLog('Web平台：模拟打印');
         await Future.delayed(const Duration(seconds: 2));
         _addLog('✓ 模拟打印完成');
-        isPrinting.value = false;
+        // ⚠️ 移除：isPrinting 由 View 层统一管理
         printerStatus.value = ExternalPrinterStatus.ready;
         return ExternalPrintResult(success: true, message: '打印测试成功（模拟）');
       }
@@ -287,9 +287,8 @@ class ExternalPrinterService extends GetxService {
       _addLog('堆栈: ${stackTrace.toString().split('\n').take(3).join('\n')}');
       printerStatus.value = ExternalPrinterStatus.error;
       return ExternalPrintResult(success: false, message: '打印异常: $e');
-    } finally {
-      isPrinting.value = false;
     }
+    // ⚠️ 移除 finally 块：isPrinting 由 View 层统一管理
   }
 
   /// 添加调试日志
