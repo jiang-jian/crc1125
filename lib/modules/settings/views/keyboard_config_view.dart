@@ -137,6 +137,9 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
 
   /// 执行测试输出
   void _performTestOutput() {
+    // 立即请求焦点，防止软键盘弹出
+    _keyboardFocusNode.requestFocus();
+    
     if (_inputBuffer.value.isEmpty) {
       Get.snackbar(
         '提示',
@@ -167,6 +170,9 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
 
   /// 清空所有内容
   void _clearAll() {
+    // 立即请求焦点，防止软键盘弹出
+    _keyboardFocusNode.requestFocus();
+    
     _inputBuffer.value = '';
     _outputText.value = '';
     _showSuccessAnimation.value = false;
@@ -174,16 +180,21 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
 
   @override
   Widget build(BuildContext context) {
-    return RawKeyboardListener(
-      focusNode: _keyboardFocusNode,
-      autofocus: true,
-      onKey: _handleRawKeyEvent,
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.white,
-        child: Row(
-          children: [
+    return GestureDetector(
+      onTap: () {
+        // 点击页面任何地方都重新获取焦点，防止软键盘弹出
+        _keyboardFocusNode.requestFocus();
+      },
+      child: RawKeyboardListener(
+        focusNode: _keyboardFocusNode,
+        autofocus: true,
+        onKey: _handleRawKeyEvent,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: Colors.white,
+          child: Row(
+            children: [
           // 左列：设备信息区 (40%)
           Expanded(
             flex: 40,
@@ -209,7 +220,8 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             ),
           ),
         ],
-      ),
+          ),
+        ),
       ),
     );
   }
@@ -300,7 +312,8 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             style: TextStyle(fontSize: 16.sp, color: AppTheme.textTertiary),
           ),
         ],
-      ),
+          ),
+        ),
       ),
     );
   }
@@ -327,7 +340,8 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             style: TextStyle(fontSize: 14.sp, color: const Color(0xFFBDC3C7)),
           ),
         ],
-      ),
+          ),
+        ),
       ),
     );
   }
@@ -359,6 +373,9 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   /// 处理设备点击
   Future<void> _handleDeviceTap(
       KeyboardDevice device, bool isConnected) async {
+    // 立即请求焦点，防止软键盘弹出
+    _keyboardFocusNode.requestFocus();
+    
     if (!isConnected) {
       // 请求权限
       final granted = await _keyboardService.requestPermission(device.deviceId);
@@ -694,7 +711,8 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             textAlign: TextAlign.center,
           ),
         ],
-      ),
+          ),
+        ),
       ),
     );
   }
