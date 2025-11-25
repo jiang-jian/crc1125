@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../../app/theme/app_theme.dart';
@@ -19,8 +18,8 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   // 获取键盘服务
   late final KeyboardService _keyboardService;
 
-  // FocusNode用于捕获键盘输入
-  final FocusNode _keyboardFocusNode = FocusNode();
+  // TextEditingController 用于捕获键盘输入
+  final TextEditingController _inputController = TextEditingController();
 
   // 测试功能状态
   final RxString _inputBuffer = ''.obs; // 输入缓冲区
@@ -33,71 +32,28 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
     // 获取全局键盘服务实例
     _keyboardService = Get.find<KeyboardService>();
 
-    // 监听键盘输入事件（已禁用：RawKeyboardListener已覆盖所有按键）
-    // ever(_keyboardService.lastKeyData, _handleKeyInput);
+    // 监听 TextField 内容变化，同步到输入缓冲区
+    _inputController.addListener(() {
+      _inputBuffer.value = _inputController.text;
+    });
 
     // 自动扫描设备
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _keyboardService.scanUsbKeyboards();
-      
-      // 初始化焦点（强制请求焦点，确保 RawKeyboardListener 可以接收事件）
-      // 使用 FocusScope 强制获取焦点，防止被其他组件抢占
-      Future.microtask(() {
-        if (mounted) {
-          FocusScope.of(context).requestFocus(_keyboardFocusNode);
-        }
-      });
     });
   }
 
   @override
   void dispose() {
-    _keyboardFocusNode.dispose();
+    _inputController.dispose();
     super.dispose();
   }
 
-  /// 处理RawKeyEvent（直接捕获物理键盘输入）
-  void _handleRawKeyEvent(RawKeyEvent event) {
-    if (event is! RawKeyDownEvent) return;
-
-    final logicalKey = event.logicalKey;
-    final keyLabel = event.character;
-
-    // 处理删除键
-    if (logicalKey == LogicalKeyboardKey.backspace) {
-      if (_inputBuffer.value.isNotEmpty) {
-        _inputBuffer.value = _inputBuffer.value.substring(0, _inputBuffer.value.length - 1);
-      }
-      return;
-    }
-
-    // 处理回车键
-    if (logicalKey == LogicalKeyboardKey.enter || logicalKey == LogicalKeyboardKey.numpadEnter) {
-      _inputBuffer.value += '\n';
-      return;
-    }
-
-    // 处理可打印字符（包括数字、字母、符号）
-    if (keyLabel != null && keyLabel.isNotEmpty) {
-      _inputBuffer.value += keyLabel;
-    }
-  }
-
-  // ==================== 已弃用方法 ====================
-  // 以下方法已被RawKeyboardListener替代，保留仅用于参考
-  // RawKeyboardListener通过event.character已能完整捕获所有按键
-  
-  // /// 处理键盘输入（数字键盘优先支持）- 已弃用
-  // void _handleKeyInput(Map<String, dynamic> keyData) { ... }
-  
-  // /// 映射数字键盘KeyCode到字符 - 已弃用
-  // String? _mapNumericKeypadKeyCode(int keyCode) { ... }
+  // TextField 自动处理所有键盘输入，无需手动解析
+  // 通过 _inputController.addListener() 监听内容变化
 
   /// 执行测试输出
   void _performTestOutput() {
-    // 立即请求焦点
-    _keyboardFocusNode.requestFocus();
-    
     if (_inputBuffer.value.isEmpty) {
       Get.snackbar(
         '提示',
@@ -128,9 +84,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
 
   /// 清空所有内容
   void _clearAll() {
-    // 立即请求焦点
-    _keyboardFocusNode.requestFocus();
-    
     _inputBuffer.value = '';
     _outputText.value = '';
     _showSuccessAnimation.value = false;
@@ -138,23 +91,10 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // 点击页面任何地方都重新获取焦点
-        FocusScope.of(context).requestFocus(_keyboardFocusNode);
-      },
-      child: Focus(
-        focusNode: _keyboardFocusNode,
-        autofocus: true,
-        skipTraversal: false,
-        canRequestFocus: true,
-        child: RawKeyboardListener(
-          focusNode: _keyboardFocusNode,
-          onKey: _handleRawKeyEvent,
-          child: Stack(
-          children: [
-            // 原有Container保持不变
-            Container(
+    return Stack(
+      children: [
+        // 原有Container保持不变
+        Container(
               width: double.infinity,
               height: double.infinity,
               color: Colors.white,
@@ -187,11 +127,51 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             ],
               ),
             ),
+            
+            // TextField：用户点击输入框，使用物理键盘输入
+            Positioned(
+              top: 20.h,
+              right: 20.w,
+              width: 400.w,
+              child: TextField(
+                controller: _inputController,
+                keyboardType: TextInputType.none,  // 禁用软键盘
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 32.sp,
+                  color: AppTheme.textPrimary,
+                ),
+                decoration: InputDecoration(
+                  hintText: '👆 点击此处，使用物理键盘输入',
+                  hintStyle: TextStyle(
+                    fontSize: 28.sp,
+                    color: AppTheme.textSecondary,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 24.w,
+                    vertical: 20.h,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(
+                      color: AppTheme.borderColor,
+                      width: 2.w,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(
+                      color: AppTheme.primaryBlue,
+                      width: 2.w,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
-        ),
-      ),
-      ),
-    );
+        );
   }
 
   /// 构建左列：设备信息区
@@ -341,9 +321,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   /// 处理设备点击
   Future<void> _handleDeviceTap(
       KeyboardDevice device, bool isConnected) async {
-    // 立即请求焦点
-    _keyboardFocusNode.requestFocus();
-    
     if (!isConnected) {
       // 请求权限
       final granted = await _keyboardService.requestPermission(device.deviceId);
