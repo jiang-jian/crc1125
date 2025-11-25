@@ -127,49 +127,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             ],
               ),
             ),
-            
-            // TextField：用户点击输入框，使用物理键盘输入
-            Positioned(
-              top: 20.h,
-              right: 20.w,
-              width: 400.w,
-              child: TextField(
-                controller: _inputController,
-                keyboardType: TextInputType.none,  // 禁用软键盘
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 32.sp,
-                  color: AppTheme.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: '👆 点击此处，使用物理键盘输入',
-                  hintStyle: TextStyle(
-                    fontSize: 28.sp,
-                    color: AppTheme.textSecondary,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 24.w,
-                    vertical: 20.h,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(
-                      color: AppTheme.borderColor,
-                      width: 2.w,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(
-                      color: AppTheme.primaryBlue,
-                      width: 2.w,
-                    ),
-                  ),
-                ),
-              ),
-            ),
           ],
         );
   }
@@ -764,45 +721,49 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
           ),
         ),
         SizedBox(height: 12.h),
-        Obx(() {
-          return Container(
-            width: double.infinity,
-            height: 120.h,
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              color: Colors.white,
+        TextField(
+          controller: _inputController,
+          keyboardType: TextInputType.none,  // 禁用软键盘
+          maxLines: 5,
+          minLines: 5,
+          style: TextStyle(
+            fontSize: 18.sp,
+            color: AppTheme.textPrimary,
+            fontFamily: 'monospace',
+            height: 1.5,
+          ),
+          decoration: InputDecoration(
+            hintText: '👆 点击此处，使用物理键盘输入...',
+            hintStyle: TextStyle(
+              fontSize: 18.sp,
+              color: AppTheme.textTertiary,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: EdgeInsets.all(16.w),
+            border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(
-                color: _inputBuffer.value.isNotEmpty
-                    ? AppTheme.primaryColor
-                    : AppTheme.borderColor,
-                width: _inputBuffer.value.isNotEmpty ? 2.w : 1.w,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: SingleChildScrollView(
-              child: Text(
-                _inputBuffer.value.isEmpty
-                    ? '请使用外置键盘输入...'
-                    : _inputBuffer.value,
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  color: _inputBuffer.value.isEmpty
-                      ? AppTheme.textTertiary
-                      : AppTheme.textPrimary,
-                  fontFamily: 'monospace',
-                  height: 1.5,
-                ),
+              borderSide: BorderSide(
+                color: AppTheme.borderColor,
+                width: 1.w,
               ),
             ),
-          );
-        }),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(
+                color: AppTheme.borderColor,
+                width: 1.w,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(
+                color: AppTheme.primaryColor,
+                width: 2.w,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
