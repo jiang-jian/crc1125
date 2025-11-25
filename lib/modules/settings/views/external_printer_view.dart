@@ -603,30 +603,27 @@ class ExternalPrinterView extends StatelessWidget {
     try {
       // 🎯 智能缓存：如果已有授权的同一设备，跳过扫描直接打印
       if (service.selectedPrinter.value != null &&
-          _isSameDevice(service.selectedPrinter.value!, device)) {
-        print('[ExternalPrinter] 检测到缓存设备，验证权限...');
+          _isSameDevice(service.selectedPrinter.value!, device) &&
+          service.printerStatus.value == ExternalPrinterStatus.ready) {
+        // ✅ 优化：信任 selectedPrinter 作为授权状态的来源
+        // selectedPrinter 只有在 requestPermission 返回 true 时才会被设置
+        // 因此 selectedPrinter != null 本身就意味着设备已授权
+        // 无需再调用 hasPermission（避免 deviceId 不稳定问题）
+        print('[ExternalPrinter] 检测到已授权缓存设备，直接打印');
         
-        // ✅ 必须先检查权限！
-        final hasPermission = await service.hasPermission(service.selectedPrinter.value!);
-        print('[ExternalPrinter] 缓存设备权限检查结果: $hasPermission');
-        
-        if (hasPermission) {
-          // 已授权，跳过扫描直接打印
-          print('[ExternalPrinter] 使用已授权设备，直接打印');
-          final result = await service.testPrint(service.selectedPrinter.value!);
-          print('[ExternalPrinter] 打印结果: ${result.success}, 消息: ${result.message}');
+        final result = await service.testPrint(service.selectedPrinter.value!);
+        print('[ExternalPrinter] 打印结果: ${result.success}, 消息: ${result.message}');
 
-          if (result.success) {
-            service.testPrintSuccess.value = true;
-          } else {
-            Toast.error(message: '打印失败: ${result.message}');
-          }
-          return;
+        if (result.success) {
+          service.testPrintSuccess.value = true;
+        } else {
+          Toast.error(message: '打印失败: ${result.message}');
         }
-        
-        // 未授权，继续执行完整流程（扫描→请求权限→打印）
-        print('[ExternalPrinter] 缓存设备未授权，执行完整流程');
+        return;
       }
+      
+      // 未命中智能缓存，执行完整流程（扫描→请求权限→打印）
+      print('[ExternalPrinter] 未命中智能缓存，执行完整流程');
 
       // 重新扫描确认设备仍然连接
       print('[ExternalPrinter] 重新扫描设备...');
