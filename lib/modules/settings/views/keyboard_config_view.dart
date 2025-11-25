@@ -21,9 +21,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
 
   // FocusNode用于捕获键盘输入
   final FocusNode _keyboardFocusNode = FocusNode();
-  
-  // TextEditingController用于隐形TextField（拦截系统输入事件）
-  final TextEditingController _dummyController = TextEditingController();
 
   // 测试功能状态
   final RxString _inputBuffer = ''.obs; // 输入缓冲区
@@ -48,7 +45,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   @override
   void dispose() {
     _keyboardFocusNode.dispose();
-    _dummyController.dispose();
     super.dispose();
   }
 
@@ -193,16 +189,13 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
         focusNode: _keyboardFocusNode,
         autofocus: true,
         onKey: _handleRawKeyEvent,
-        child: Stack(
-          children: [
-            // 主界面容器
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: Colors.white,
-              child: Row(
-                children: [
-              // 左列：设备信息区 (40%)
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: Colors.white,
+          child: Row(
+            children: [
+          // 左列：设备信息区 (40%)
           Expanded(
             flex: 40,
             child: Container(
@@ -227,31 +220,7 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             ),
           ),
         ],
-              ),
-            ),
-            
-            // 隐形TextField（拦截系统文本输入事件，防止软键盘弹出）
-            Positioned(
-              left: -1000,
-              top: -1000,
-              child: SizedBox(
-                width: 0.1,
-                height: 0.1,
-                child: TextField(
-                  controller: _dummyController,
-                  focusNode: _keyboardFocusNode,
-                  readOnly: true,
-                  showCursor: false,
-                  enableInteractiveSelection: false,
-                  style: const TextStyle(fontSize: 0.1, color: Colors.transparent),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
