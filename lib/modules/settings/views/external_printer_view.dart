@@ -671,7 +671,7 @@ class ExternalPrinterView extends StatelessWidget {
         print('[ExternalPrinter] 权限请求结果: $hasPermission');
         
         if (!hasPermission) {
-          Toast.error(message: '未授予USB设备权限，无法打印');
+          // 用户拒绝授权，静默返回（不显示Toast，避免干扰用户）
           return;
         }
       }
