@@ -570,6 +570,22 @@ class ExternalPrinterView extends StatelessWidget {
     );
   }
 
+  /// 检查是否为同一设备（基于硬件标识）
+  bool _isSameDevice(ExternalPrinterDevice d1, ExternalPrinterDevice d2) {
+    // 必须 vendorId 和 productId 匹配（硬件型号）
+    if (d1.vendorId != d2.vendorId || d1.productId != d2.productId) {
+      return false;
+    }
+
+    // 如果有序列号，必须序列号也匹配（区分同型号设备）
+    if (d1.serialNumber != null && d1.serialNumber!.isNotEmpty) {
+      return d1.serialNumber == d2.serialNumber;
+    }
+
+    // 没有序列号，vendorId + productId 匹配即可
+    return true;
+  }
+
   /// 测试打印
   Future<void> _testPrint(
     ExternalPrinterDevice device,
@@ -585,6 +601,21 @@ class ExternalPrinterView extends StatelessWidget {
     print('[ExternalPrinter] 开始测试打印，设备: ${device.displayName}');
 
     try {
+      // 🎯 智能缓存：如果已有授权的同一设备，跳过扫描和权限检查
+      if (service.selectedPrinter.value != null &&
+          _isSameDevice(service.selectedPrinter.value!, device)) {
+        print('[ExternalPrinter] 使用已授权设备，跳过权限检查');
+        final result = await service.testPrint(service.selectedPrinter.value!);
+        print('[ExternalPrinter] 打印结果: ${result.success}, 消息: ${result.message}');
+
+        if (result.success) {
+          service.testPrintSuccess.value = true;
+        } else {
+          Toast.error(message: '打印失败: ${result.message}');
+        }
+        return;
+      }
+
       // 重新扫描确认设备仍然连接
       print('[ExternalPrinter] 重新扫描设备...');
       await service.scanUsbPrinters();
@@ -622,12 +653,6 @@ class ExternalPrinterView extends StatelessWidget {
       print('[ExternalPrinter] 权限检查结果: $alreadyHasPermission');
 
       if (!alreadyHasPermission) {
-        // 没有权限：显示Toast提示
-        Toast.info(message: '正在请求打印机访问权限\n请在弹出的对话框中点击"允许"');
-
-        // 延迟让Toast显示完整
-        await Future.delayed(const Duration(milliseconds: 500));
-
         // 请求USB设备权限（弹出系统对话框）
         print('[ExternalPrinter] 请求USB权限...');
         final hasPermission = await service.requestPermission(currentDevice);
