@@ -22,10 +22,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   // FocusNode用于捕获键盘输入
   final FocusNode _keyboardFocusNode = FocusNode();
 
-  // 隐形TextField控制器和焦点（用于阻止虚拟键盘弹出）
-  final TextEditingController _dummyController = TextEditingController();
-  final FocusNode _dummyFocusNode = FocusNode();
-
   // 测试功能状态
   final RxString _inputBuffer = ''.obs; // 输入缓冲区
   final RxString _outputText = ''.obs; // 输出显示文本
@@ -44,10 +40,12 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _keyboardService.scanUsbKeyboards();
       
-      // 初始化焦点（阻止虚拟键盘弹出）
-      _keyboardFocusNode.requestFocus();
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _dummyFocusNode.requestFocus();
+      // 初始化焦点（强制请求焦点，确保 RawKeyboardListener 可以接收事件）
+      // 使用 FocusScope 强制获取焦点，防止被其他组件抢占
+      Future.microtask(() {
+        if (mounted) {
+          FocusScope.of(context).requestFocus(_keyboardFocusNode);
+        }
       });
     });
   }
@@ -55,8 +53,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   @override
   void dispose() {
     _keyboardFocusNode.dispose();
-    _dummyController.dispose();
-    _dummyFocusNode.dispose();
     super.dispose();
   }
 
@@ -99,9 +95,8 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
 
   /// 执行测试输出
   void _performTestOutput() {
-    // 立即请求焦点，防止软键盘弹出
+    // 立即请求焦点
     _keyboardFocusNode.requestFocus();
-    _dummyFocusNode.requestFocus();
     
     if (_inputBuffer.value.isEmpty) {
       Get.snackbar(
@@ -133,9 +128,8 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
 
   /// 清空所有内容
   void _clearAll() {
-    // 立即请求焦点，防止软键盘弹出
+    // 立即请求焦点
     _keyboardFocusNode.requestFocus();
-    _dummyFocusNode.requestFocus();
     
     _inputBuffer.value = '';
     _outputText.value = '';
@@ -146,15 +140,18 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // 点击页面任何地方都重新获取焦点，防止软键盘弹出
-        _keyboardFocusNode.requestFocus();
-        _dummyFocusNode.requestFocus();
+        // 点击页面任何地方都重新获取焦点
+        FocusScope.of(context).requestFocus(_keyboardFocusNode);
       },
-      child: RawKeyboardListener(
+      child: Focus(
         focusNode: _keyboardFocusNode,
         autofocus: true,
-        onKey: _handleRawKeyEvent,
-        child: Stack(
+        skipTraversal: false,
+        canRequestFocus: true,
+        child: RawKeyboardListener(
+          focusNode: _keyboardFocusNode,
+          onKey: _handleRawKeyEvent,
+          child: Stack(
           children: [
             // 原有Container保持不变
             Container(
@@ -190,34 +187,9 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             ],
               ),
             ),
-            
-            // 隐形TextField（屏幕外，用于拦截系统输入意图，阻止虚拟键盘弹出）
-            Positioned(
-              left: -1000,
-              top: -1000,
-              child: SizedBox(
-                width: 1,
-                height: 1,
-                child: TextField(
-                  controller: _dummyController,
-                  focusNode: _dummyFocusNode,
-                  readOnly: true,
-                  enableInteractiveSelection: false,
-                  showCursor: false,
-                  keyboardType: TextInputType.none,
-                  style: const TextStyle(
-                    fontSize: 0.1,
-                    color: Colors.transparent,
-                  ),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -369,9 +341,8 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
   /// 处理设备点击
   Future<void> _handleDeviceTap(
       KeyboardDevice device, bool isConnected) async {
-    // 立即请求焦点，防止软键盘弹出
+    // 立即请求焦点
     _keyboardFocusNode.requestFocus();
-    _dummyFocusNode.requestFocus();
     
     if (!isConnected) {
       // 请求权限
