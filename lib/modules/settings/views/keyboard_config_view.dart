@@ -37,8 +37,8 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
     // 获取全局键盘服务实例
     _keyboardService = Get.find<KeyboardService>();
 
-    // 监听键盘输入事件
-    ever(_keyboardService.lastKeyData, _handleKeyInput);
+    // 监听键盘输入事件（已禁用：RawKeyboardListener已覆盖所有按键）
+    // ever(_keyboardService.lastKeyData, _handleKeyInput);
 
     // 自动扫描设备
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -87,65 +87,15 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
     }
   }
 
-  /// 处理键盘输入（数字键盘优先支持）- 保留用于Native层事件
-  void _handleKeyInput(Map<String, dynamic> keyData) {
-    if (keyData.isEmpty) return;
-
-    final keyCode = keyData['keyCode'] as int?;
-    final keyChar = keyData['keyChar'] as String?;
-
-    if (keyCode == null) return;
-
-    // 数字键盘KeyCode映射 (优先处理)
-    String? char = _mapNumericKeypadKeyCode(keyCode);
-
-    // 如果不是数字键盘按键，使用keyChar
-    if (char == null && keyChar != null && keyChar.isNotEmpty) {
-      char = keyChar;
-    }
-
-    // 添加到输入缓冲区
-    if (char != null && char.isNotEmpty) {
-      _inputBuffer.value += char;
-    }
-  }
-
-  /// 映射数字键盘KeyCode到字符
-  /// Android KeyEvent常量参考：https://developer.android.com/reference/android/view/KeyEvent
-  String? _mapNumericKeypadKeyCode(int keyCode) {
-    // 数字键盘数字键 (NUMPAD_0 到 NUMPAD_9)
-    if (keyCode >= 144 && keyCode <= 153) {
-      // KeyCode 144=NUMPAD_0, 145=NUMPAD_1, ..., 153=NUMPAD_9
-      return (keyCode - 144).toString();
-    }
-
-    // 数字键盘运算符
-    // Android KeyEvent常量: https://developer.android.com/reference/android/view/KeyEvent
-    switch (keyCode) {
-      case 158: // NUMPAD_DOT (.)
-        return '.';
-      case 154: // NUMPAD_DIVIDE (/)
-        return '/';
-      case 155: // NUMPAD_MULTIPLY (*)
-        return '*';
-      case 156: // NUMPAD_SUBTRACT (-)
-        return '-';
-      case 157: // NUMPAD_ADD (+)
-        return '+';
-      case 160: // NUMPAD_ENTER
-        return '\n';
-      case 66: // ENTER (主键盘)
-        return '\n';
-      case 67: // DEL/BACKSPACE
-        // 删除最后一个字符
-        if (_inputBuffer.value.isNotEmpty) {
-          _inputBuffer.value = _inputBuffer.value.substring(0, _inputBuffer.value.length - 1);
-        }
-        return null;
-      default:
-        return null;
-    }
-  }
+  // ==================== 已弃用方法 ====================
+  // 以下方法已被RawKeyboardListener替代，保留仅用于参考
+  // RawKeyboardListener通过event.character已能完整捕获所有按键
+  
+  // /// 处理键盘输入（数字键盘优先支持）- 已弃用
+  // void _handleKeyInput(Map<String, dynamic> keyData) { ... }
+  
+  // /// 映射数字键盘KeyCode到字符 - 已弃用
+  // String? _mapNumericKeypadKeyCode(int keyCode) { ... }
 
   /// 执行测试输出
   void _performTestOutput() {
