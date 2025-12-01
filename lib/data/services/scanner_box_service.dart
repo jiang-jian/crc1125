@@ -1,8 +1,17 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import '../models/scanner_box_model.dart';
+import '../plugins/scanner_box_plugin.dart';
 
-/// 扫码盒子服务（暂时使用模拟数据，后续对接底层）
+/// 扫码盒子服务（已集成真实硬件接口）
 class ScannerBoxService extends GetxService {
+  // ==================== 事件订阅 ====================
+
+  StreamSubscription? _scanResultSubscription;
+  StreamSubscription? _deviceAttachedSubscription;
+  StreamSubscription? _deviceDetachedSubscription;
+  StreamSubscription? _permissionGrantedSubscription;
+  StreamSubscription? _permissionDeniedSubscription;
   // ==================== 响应式状态 ====================
 
   /// 当前连接的设备
@@ -26,7 +35,63 @@ class ScannerBoxService extends GetxService {
   void onInit() {
     super.onInit();
     print('[ScannerBox] 服务初始化');
-    _initMockData();
+    _initPlugin();
+    _initMockData(); // 保留模拟数据用于开发测试
+  }
+
+  /// 初始化硬件插件
+  void _initPlugin() {
+    print('[ScannerBox] 初始化硬件插件');
+    ScannerBoxPlugin.initialize();
+
+    // 监听扫码结果
+    _scanResultSubscription = ScannerBoxPlugin.onScanResult.listen((result) {
+      _handleScanResult(result);
+    });
+
+    // 监听设备连接
+    _deviceAttachedSubscription = ScannerBoxPlugin.onDeviceAttached.listen((_) {
+      print('[ScannerBox] 检测到设备连接');
+      // 自动重新扫描设备
+      scanDevices();
+    });
+
+    // 监听设备断开
+    _deviceDetachedSubscription = ScannerBoxPlugin.onDeviceDetached.listen((_) {
+      print('[ScannerBox] 检测到设备断开');
+      if (connectedDevice.value != null) {
+        disconnect();
+      }
+    });
+
+    // 监听权限授予
+    _permissionGrantedSubscription = ScannerBoxPlugin.onPermissionGranted
+        .listen((data) {
+          print('[ScannerBox] USB权限已授予: ${data["deviceName"]}');
+          // 自动开始监听扫码
+          startScanning();
+        });
+
+    // 监听权限拒绝
+    _permissionDeniedSubscription = ScannerBoxPlugin.onPermissionDenied.listen((
+      deviceId,
+    ) {
+      print('[ScannerBox] USB权限被拒绝: $deviceId');
+      deviceStatus.value = ScannerBoxStatus.error;
+    });
+  }
+
+  /// 处理扫码结果
+  void _handleScanResult(Map<String, dynamic> result) {
+    print('[ScannerBox] 收到扫码结果: $result');
+
+    final scanData = ScanData(
+      timestamp: DateTime.now(),
+      content: result['content']?.toString() ?? '',
+      type: result['type']?.toString() ?? 'Unknown',
+    );
+
+    addScanData(scanData);
   }
 
   /// 初始化模拟数据（测试用）
@@ -64,16 +129,28 @@ class ScannerBoxService extends GetxService {
 
   // ==================== 设备管理 ====================
 
-  /// 扫描USB设备
+  /// 扫描USB设备（调用真实硬件接口）
   Future<List<ScannerBoxDevice>> scanDevices() async {
     print('[ScannerBox] 开始扫描设备...');
-    await Future.delayed(const Duration(seconds: 1));
 
-    // 模拟扫描结果
-    final mockDevices = [
+    try {
+      // 调用真实硬件插件扫描设备
+      final devices = await ScannerBoxPlugin.scanDevices();
+      print('[ScannerBox] 扫描完成，发现 ${devices.length} 个设备');
+      return devices;
+    } catch (e) {
+      print('[ScannerBox] 扫描设备失败: $e');
+      // 降级到模拟数据
+      return _getMockDevices();
+    }
+  }
+
+  /// 获取模拟设备列表（开发测试用）
+  List<ScannerBoxDevice> _getMockDevices() {
+    return [
       ScannerBoxDevice(
         deviceId: 'mock_scanner_001',
-        deviceName: 'USB扫码盒子',
+        deviceName: 'USB扫码盒子（模拟）',
         vendorId: 1234,
         productId: 5678,
         serialNumber: 'SN20250101001',
@@ -83,25 +160,41 @@ class ScannerBoxService extends GetxService {
         isAuthorized: false,
       ),
     ];
-
-    print('[ScannerBox] 扫描完成，发现 ${mockDevices.length} 个设备');
-    return mockDevices;
   }
 
-  /// 请求设备授权
+  /// 请求设备授权（调用真实硬件接口）
   Future<bool> requestAuthorization(ScannerBoxDevice device) async {
     print('[ScannerBox] 请求授权设备: ${device.displayName}');
-    await Future.delayed(const Duration(seconds: 1));
 
-    // 模拟授权成功
-    connectedDevice.value = device.copyWith(
-      isConnected: true,
-      isAuthorized: true,
-    );
-    deviceStatus.value = ScannerBoxStatus.connected;
+    try {
+      // 调用真实硬件插件请求USB权限
+      final hasPermission = await ScannerBoxPlugin.requestPermission(
+        device.deviceId,
+      );
 
-    print('[ScannerBox] 授权成功');
-    return true;
+      if (hasPermission) {
+        // 已有权限，立即连接
+        connectedDevice.value = device.copyWith(
+          isConnected: true,
+          isAuthorized: true,
+        );
+        deviceStatus.value = ScannerBoxStatus.connected;
+        print('[ScannerBox] 设备已有权限，直接连接');
+
+        // 自动开始监听扫码
+        await startScanning();
+        return true;
+      } else {
+        // 权限请求已发起，等待用户授权
+        // 结果将通过 onPermissionGranted 或 onPermissionDenied 回调返回
+        print('[ScannerBox] 权限请求已发起，等待用户授权...');
+        return false;
+      }
+    } catch (e) {
+      print('[ScannerBox] 请求授权失败: $e');
+      deviceStatus.value = ScannerBoxStatus.error;
+      return false;
+    }
   }
 
   /// 断开设备连接
@@ -118,7 +211,7 @@ class ScannerBoxService extends GetxService {
 
   // ==================== 扫码功能 ====================
 
-  /// 开始监听扫码数据
+  /// 开始监听扫码数据（调用真实硬件接口）
   Future<void> startScanning() async {
     if (connectedDevice.value == null) {
       print('[ScannerBox] 错误：未连接设备');
@@ -131,41 +224,45 @@ class ScannerBoxService extends GetxService {
     }
 
     print('[ScannerBox] 开始监听扫码数据');
-    isScanning.value = true;
-    deviceStatus.value = ScannerBoxStatus.scanning;
 
-    // TODO: 后续对接底层SDK，监听扫码事件
-    // 这里暂时使用模拟数据
-    _startMockScanning();
-  }
+    try {
+      // 调用真实硬件插件开始监听
+      final success = await ScannerBoxPlugin.startListening();
 
-  /// 停止监听扫码数据
-  Future<void> stopScanning() async {
-    print('[ScannerBox] 停止监听扫码数据');
-    isScanning.value = false;
-    deviceStatus.value = ScannerBoxStatus.connected;
-  }
-
-  /// 模拟扫码（测试用）
-  void _startMockScanning() {
-    // 每10秒模拟一次扫码
-    Future.delayed(const Duration(seconds: 10), () {
-      if (isScanning.value) {
-        _addMockScan();
-        _startMockScanning(); // 继续监听
+      if (success) {
+        isScanning.value = true;
+        deviceStatus.value = ScannerBoxStatus.scanning;
+        print('[ScannerBox] 扫码监听已启动');
+      } else {
+        print('[ScannerBox] 启动扫码监听失败');
+        deviceStatus.value = ScannerBoxStatus.error;
       }
-    });
+    } catch (e) {
+      print('[ScannerBox] 启动扫码监听异常: $e');
+      deviceStatus.value = ScannerBoxStatus.error;
+    }
   }
 
-  /// 添加模拟扫码数据
-  void _addMockScan() {
-    final mockData = ScanData(
-      timestamp: DateTime.now(),
-      content: 'MOCK_${DateTime.now().millisecondsSinceEpoch}',
-      type: 'QR',
-    );
+  /// 停止监听扫码数据（调用真实硬件接口）
+  Future<void> stopScanning() async {
+    if (!isScanning.value) {
+      print('[ScannerBox] 未在扫描中，无需停止');
+      return;
+    }
 
-    addScanData(mockData);
+    print('[ScannerBox] 停止监听扫码数据');
+
+    try {
+      // 调用真实硬件插件停止监听
+      await ScannerBoxPlugin.stopListening();
+      isScanning.value = false;
+      deviceStatus.value = ScannerBoxStatus.connected;
+      print('[ScannerBox] 扫码监听已停止');
+    } catch (e) {
+      print('[ScannerBox] 停止扫码监听异常: $e');
+      isScanning.value = false;
+      deviceStatus.value = ScannerBoxStatus.connected;
+    }
   }
 
   /// 添加扫码数据（供底层调用）
@@ -207,7 +304,20 @@ class ScannerBoxService extends GetxService {
   @override
   void onClose() {
     print('[ScannerBox] 服务销毁');
+
+    // 取消所有事件订阅
+    _scanResultSubscription?.cancel();
+    _deviceAttachedSubscription?.cancel();
+    _deviceDetachedSubscription?.cancel();
+    _permissionGrantedSubscription?.cancel();
+    _permissionDeniedSubscription?.cancel();
+
+    // 停止扫描并断开连接
+    if (isScanning.value) {
+      stopScanning();
+    }
     disconnect();
+
     super.onClose();
   }
 }

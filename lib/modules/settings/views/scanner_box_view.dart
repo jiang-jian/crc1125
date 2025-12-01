@@ -274,7 +274,7 @@ class ScannerBoxView extends StatelessWidget {
             ),
           ),
         // 断开连接按钮
-        if (device != null && device.isAuthorized) ..[
+        if (device != null && device.isAuthorized) ...[
           SizedBox(
             width: double.infinity,
             height: 44.h,
