@@ -15,6 +15,7 @@ import 'external_card_reader_view.dart';
 import 'mw_card_reader_view.dart';
 import 'external_printer_view.dart';
 import 'qr_scanner_config_view.dart';
+import 'scanner_box_view.dart';
 import 'keyboard_config_view.dart';
 import 'card_registration_view.dart';
 import 'game_card_management_view.dart';
@@ -50,6 +51,7 @@ class SettingsPage extends GetView<SettingsController> {
         icon: Icons.nfc_outlined,
       ),
       const MenuItem(key: 'qr_scanner', label: '二维码扫描仪', icon: Icons.qr_code_2),
+      const MenuItem(key: 'scanner_box', label: '扫码盒子', icon: Icons.qr_code_scanner),
       const MenuItem(key: 'external_keyboard', label: '外置键盘', icon: Icons.keyboard),
       const MenuItem(key: 'external_printer', label: '打印机', icon: Icons.print),
       const MenuItem(
@@ -96,6 +98,8 @@ class SettingsPage extends GetView<SettingsController> {
         return const MwCardReaderView();
       case 'qr_scanner':
         return const QrScannerConfigView();
+      case 'scanner_box':
+        return const ScannerBoxView();
       case 'external_keyboard':
         return const KeyboardConfigView();
       case 'external_printer':
