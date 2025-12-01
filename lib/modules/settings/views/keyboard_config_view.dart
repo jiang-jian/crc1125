@@ -217,8 +217,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             style: TextStyle(fontSize: 16.sp, color: AppTheme.textTertiary),
           ),
         ],
-          ),
-        ),
       ),
     );
   }
@@ -245,8 +243,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             style: TextStyle(fontSize: 14.sp, color: const Color(0xFFBDC3C7)),
           ),
         ],
-          ),
-        ),
       ),
     );
   }
@@ -613,8 +609,6 @@ class _KeyboardConfigViewState extends State<KeyboardConfigView> {
             textAlign: TextAlign.center,
           ),
         ],
-          ),
-        ),
       ),
     );
   }
