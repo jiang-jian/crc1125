@@ -344,7 +344,7 @@ class KeyboardPlugin : FlutterPlugin, MethodCallHandler {
             val usbInterface = device.getInterface(i)
             interfaceDetails.add(
                 mapOf(
-                    "interfaceNumber" to usbInterface.interfaceNumber,
+                    "interfaceNumber" to usbInterface.id,
                     "interfaceClass" to usbInterface.interfaceClass,
                     "interfaceSubclass" to usbInterface.interfaceSubclass,
                     "interfaceProtocol" to usbInterface.interfaceProtocol,
@@ -763,7 +763,7 @@ class KeyboardPlugin : FlutterPlugin, MethodCallHandler {
             )
             
             return if (length > 0) {
-                Log.d(TAG, "✅ 成功读取HID Descriptor: ${device.deviceName}, 长度=$length字节")
+                Log.d(TAG, "✅ 成功读取HID Descriptor: ${device.deviceName}, 长度=${length}字节")
                 buffer.copyOf(length)
             } else {
                 Log.w(TAG, "⚠️ 读取HID Descriptor失败: ${device.deviceName}, length=$length")
